@@ -7875,8 +7875,10 @@ void PrimaryLogPG::finish_ctx(OpContext *ctx, int log_op_type, bool maintain_ssc
   }
 
   if (!ctx->extra_reqids.empty()) {
-    dout(20) << __func__ << "  extra_reqids " << ctx->extra_reqids << dendl;
+    dout(20) << __func__ << "  extra_reqids " << ctx->extra_reqids << " "
+             << ctx->extra_reqid_return_codes << dendl;
     ctx->log.back().extra_reqids.swap(ctx->extra_reqids);
+    ctx->log.back().extra_reqid_return_codes.swap(ctx->extra_reqid_return_codes);
   }
 
   // apply new object state.
@@ -8160,7 +8162,9 @@ int PrimaryLogPG::do_copy_get(OpContext *ctx, bufferlist::iterator& bp,
   if (cursor.is_complete()) {
     // include reqids only in the final step.  this is a bit fragile
     // but it works...
-    pg_log.get_log().get_object_reqids(ctx->obc->obs.oi.soid, 10, &reply_obj.reqids);
+    pg_log.get_log().get_object_reqids(ctx->obc->obs.oi.soid, 10,
+                                       &reply_obj.reqids,
+                                       &reply_obj.reqid_return_codes);
     dout(20) << " got reqids" << dendl;
   }
 
@@ -8196,7 +8200,8 @@ void PrimaryLogPG::fill_in_copy_get_noent(OpRequestRef& op, hobject_t oid,
   uint64_t features = m->get_features();
   object_copy_data_t reply_obj;
 
-  pg_log.get_log().get_object_reqids(oid, 10, &reply_obj.reqids);
+  pg_log.get_log().get_object_reqids(oid, 10, &reply_obj.reqids,
+                                     &reply_obj.reqid_return_codes);
   dout(20) << __func__ << " got reqids " << reply_obj.reqids << dendl;
   ::encode(reply_obj, osd_op.outdata, features);
   osd_op.rval = -ENOENT;
@@ -8289,6 +8294,7 @@ void PrimaryLogPG::_copy_some(ObjectContextRef obc, CopyOpRef cop)
 	      &cop->results.source_data_digest,
 	      &cop->results.source_omap_digest,
 	      &cop->results.reqids,
+	      &cop->results.reqid_return_codes,
 	      &cop->results.truncate_seq,
 	      &cop->results.truncate_size,
 	      &cop->rval);
@@ -8643,6 +8649,7 @@ void PrimaryLogPG::finish_copyfrom(CopyFromCallback *cb)
   obs.oi.truncate_size = cb->results->truncate_size;
 
   ctx->extra_reqids = cb->results->reqids;
+  ctx->extra_reqid_return_codes = cb->results->reqid_return_codes;
 
   // cache: clear whiteout?
   if (obs.oi.is_whiteout()) {
@@ -8804,6 +8811,7 @@ void PrimaryLogPG::finish_promote(int r, CopyResults *results,
   tctx->new_obs.exists = true;
 
   tctx->extra_reqids = results->reqids;
+  tctx->extra_reqid_return_codes = results->reqid_return_codes;
 
   bool legacy_snapset = tctx->new_snapset.is_legacy() ||
     get_osdmap()->require_osd_release < CEPH_RELEASE_LUMINOUS;
