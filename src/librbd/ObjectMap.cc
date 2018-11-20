@@ -357,6 +357,125 @@ void ObjectMap<I>::aio_update(uint64_t snap_id, uint64_t start_object_no,
   req->send();
 }
 
+template <typename I>
+int ObjectMap<I>::get_object_map(BitVector<2>* om) {
+  assert(m_image_ctx.snap_lock.is_locked());
+  assert(m_image_ctx.object_map_lock.is_locked());
+
+  CephContext* cct = m_image_ctx.cct;
+  ldout(cct, 10) << dendl;
+
+  if ((m_image_ctx.features & RBD_FEATURE_FAST_DIFF) == 0) {
+    return -ENOENT;
+  }
+
+  uint64_t flags;
+  int r = m_image_ctx.get_flags(CEPH_NOSNAP, &flags);
+  if (r < 0) {
+    lderr(cct) << "failed to retrieve image flags" << dendl;
+    return r;
+  }
+  if ((flags & RBD_FLAG_FAST_DIFF_INVALID) != 0) {
+    ldout(cct, 1) << "cannot perform fast diff on invalid "
+                  << "object map" << dendl;
+    return -EINVAL;
+  }
+
+  *om = m_object_map;
+
+  return 0;
+}
+
+#undef dout_prefix
+#define dout_prefix *_dout << "librbd::ObjectMap: " << __func__ \
+                           << ": "
+
+template <typename I>
+void ObjectMap<I>::calculate_usage(I& ictx, BitVector<2>& om,
+    uint64_t *used, uint64_t *dirty) {
+  assert(used || dirty);
+
+  CephContext* cct = ictx.cct;
+
+  utime_t start = ceph_clock_now();
+  utime_t latency;
+
+  // allocate a continuous memory to speedup the calculation
+  BitVector<2> object_state;
+  object_state.clear();
+  object_state.resize(om.size());
+
+  auto it = om.begin();
+  auto end_it = om.end();
+  auto state_it = object_state.begin();
+  for (; it != end_it; ++it,++state_it) {
+    // do not remove the cast!!!
+    *state_it = static_cast<uint8_t>(*it);
+  }
+
+  latency = ceph_clock_now() - start;
+  ldout(cct, 10) << "initialize object state latency: "
+                << latency.sec() << "s/"
+                << latency.usec() << "us" << dendl;
+  start = ceph_clock_now();
+
+  uint64_t r_used = 0, r_dirty = 0;
+
+  uint64_t period = ictx.get_stripe_period();
+  uint64_t off = 0;
+  uint64_t left = ictx.size;
+
+  while (left > 0) {
+    uint64_t period_off = off - (off % period);
+    uint64_t read_len = min(period_off + period - off, left);
+
+    // map to extents
+    map<object_t,vector<ObjectExtent> > object_extents;
+    Striper::file_to_extents(cct, ictx.format_string,
+                             &ictx.layout, off, read_len, 0,
+                             object_extents, 0);
+
+    for (map<object_t,vector<ObjectExtent> >::iterator p =
+           object_extents.begin();
+         p != object_extents.end(); ++p) {
+      ldout(cct, 20) << "object " << p->first << dendl;
+
+      const uint64_t object_no = p->second.front().objectno;
+      uint8_t state = object_state[object_no];
+      if (state == OBJECT_EXISTS) {
+        for (std::vector<ObjectExtent>::iterator q = p->second.begin();
+             q != p->second.end(); ++q) {
+          r_used += q->length;
+          r_dirty += q->length;
+        }
+      } else if (state == OBJECT_EXISTS_CLEAN) {
+        for (std::vector<ObjectExtent>::iterator q = p->second.begin();
+             q != p->second.end(); ++q) {
+          r_used += q->length;
+        }
+      }
+    }
+
+    left -= read_len;
+    off += read_len;
+  }
+
+  latency = ceph_clock_now() - start;
+  ldout(cct, 10) << "calc usage latency: "
+                << latency.sec() << "s/"
+                << latency.usec() << "us" << dendl;
+
+  ldout(cct, 10) << "used: " << stringify(byte_u_t(r_used))
+                 << ", dirty: " << stringify(byte_u_t(r_dirty)) << dendl;
+
+  if (used) {
+    *used = r_used;
+  }
+  if (dirty) {
+    *dirty = r_dirty;
+  }
+}
+
 } // namespace librbd
 
 template class librbd::ObjectMap<librbd::ImageCtx>;
