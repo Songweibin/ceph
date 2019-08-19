@@ -400,19 +400,6 @@ void ObjectMap<I>::calculate_usage(I& ictx, BitVector<2>& om,
   utime_t start = ceph_clock_now();
   utime_t latency;
 
-  // allocate a continuous memory to speedup the calculation
-  BitVector<2> object_state;
-  object_state.clear();
-  object_state.resize(om.size());
-
-  auto it = om.begin();
-  auto end_it = om.end();
-  auto state_it = object_state.begin();
-  for (; it != end_it; ++it,++state_it) {
-    // do not remove the cast!!!
-    *state_it = static_cast<uint8_t>(*it);
-  }
-
   latency = ceph_clock_now() - start;
   ldout(cct, 10) << "initialize object state latency: "
                 << latency.sec() << "s/"
@@ -421,43 +408,22 @@ void ObjectMap<I>::calculate_usage(I& ictx, BitVector<2>& om,
 
   uint64_t r_used = 0, r_dirty = 0;
 
-  uint64_t period = ictx.get_stripe_period();
-  uint64_t off = 0;
-  uint64_t left = ictx.size;
+  uint64_t left = ictx.size;;
+  uint64_t object_size = (1ull << ictx.order);
 
-  while (left > 0) {
-    uint64_t period_off = off - (off % period);
-    uint64_t read_len = min(period_off + period - off, left);
-
-    // map to extents
-    map<object_t,vector<ObjectExtent> > object_extents;
-    Striper::file_to_extents(cct, ictx.format_string,
-                             &ictx.layout, off, read_len, 0,
-                             object_extents, 0);
-
-    for (map<object_t,vector<ObjectExtent> >::iterator p =
-           object_extents.begin();
-         p != object_extents.end(); ++p) {
-      ldout(cct, 20) << "object " << p->first << dendl;
-
-      const uint64_t object_no = p->second.front().objectno;
-      uint8_t state = object_state[object_no];
-      if (state == OBJECT_EXISTS) {
-        for (std::vector<ObjectExtent>::iterator q = p->second.begin();
-             q != p->second.end(); ++q) {
-          r_used += q->length;
-          r_dirty += q->length;
-        }
-      } else if (state == OBJECT_EXISTS_CLEAN) {
-        for (std::vector<ObjectExtent>::iterator q = p->second.begin();
-             q != p->second.end(); ++q) {
-          r_used += q->length;
-        }
-      }
+  auto it = om.begin();
+  auto end_it = om.end();
+  while (it != end_it) {
+    uint64_t len = min(object_size, left);
+    if (*it == OBJECT_EXISTS) {
+      r_used += len;
+      r_dirty += len;
+    } else if (*it == OBJECT_EXISTS_CLEAN) {
+      r_used += len;
     }
 
-    left -= read_len;
-    off += read_len;
+    ++it;
+    left -= len;
   }
 
   latency = ceph_clock_now() - start;
