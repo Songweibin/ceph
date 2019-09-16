@@ -38,6 +38,8 @@ class SafeTimer;
 
 namespace librbd {
 
+  constexpr uint64_t kInvalidSize = std::numeric_limits<uint64_t>::max();
+
   template <typename> class ExclusiveLock;
   template <typename> class ImageState;
   template <typename> class ImageWatcher;

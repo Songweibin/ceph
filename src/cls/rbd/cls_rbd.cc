@@ -5194,6 +5194,8 @@ int trash_state_set(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
 #define STATUS_IMAGE_KEY_PREFIX         "zimage_"
 #define STATUS_SNAPSHOT_KEY_PREFIX      "zsnapshot_"
 
+constexpr uint64_t kInvalidSize = std::numeric_limits<uint64_t>::max();
+
 static std::string status_key_for_image(const std::string &id)
 {
   return STATUS_IMAGE_KEY_PREFIX + id;
@@ -5303,6 +5305,11 @@ int status_list_images(cls_method_context_t hctx, bufferlist *in, bufferlist *ou
         image.state |= cls::rbd::STATUS_IMAGE_STATE_IDLE;
       }
 
+      // kind of protection, see `status_update_size`
+      if (image.used > image.size) {
+        image.used = image.size;
+      }
+
       CLS_LOG(20, "listing status image '%s' -> '%s'", image.id.c_str(),
           image.name.c_str());
 
@@ -5361,6 +5368,13 @@ int status_list_snapshots(cls_method_context_t hctx, bufferlist *in, bufferlist 
       CLS_LOG(20, "listing status snapshot '0x%lx' -> '%s@%s'", snapshot.id,
           snapshot.image_id.c_str(), snapshot.name.c_str());
 
+      // kind of protection, see `status_add_snapshot`
+      if (snapshot.used > snapshot.size) {
+        snapshot.used = snapshot.size;
+      }
+      if (snapshot.dirty > snapshot.size) {
+        snapshot.dirty = snapshot.size;
+      }
       snapshots.push_back(snapshot);
 
       if (snapshots.size() >= max_return)
@@ -5431,10 +5445,15 @@ int status_list_usages(cls_method_context_t hctx, bufferlist *in, bufferlist *ou
       }
 
       cls::rbd::StatusUsage usage;
-      usage.state = image.state;
+      usage.state = image.data_pool_id; // used as data pool id
       usage.id = image.id;
       usage.size = image.size;
       usage.used = image.used;
+
+      // kind of protection, see `status_update_size`
+      if (usage.used > usage.size) {
+        usage.used = usage.size;
+      }
 
       usages.push_back(usage);
 
@@ -5993,7 +6012,7 @@ int status_add_snapshot(cls_method_context_t hctx, bufferlist *in, bufferlist *o
   std::string image_id, snap_name;
   uint64_t snap_id;
   cls::rbd::SnapshotNamespaceOnDisk snap_namespace;
-  uint64_t size;
+  uint64_t legacy_size; // now we read size from image
   uint64_t used;
   uint64_t dirty;
   try {
@@ -6002,7 +6021,7 @@ int status_add_snapshot(cls_method_context_t hctx, bufferlist *in, bufferlist *o
     ::decode(snap_id, iter);
     ::decode(snap_name, iter);
     ::decode(snap_namespace, iter);
-    ::decode(size, iter);
+    ::decode(legacy_size, iter);
     ::decode(used, iter);
     ::decode(dirty, iter);
   } catch (const buffer::error &err) {
@@ -6031,11 +6050,13 @@ int status_add_snapshot(cls_method_context_t hctx, bufferlist *in, bufferlist *o
   if (r < 0) {
     return r;
   }
-  if (used != std::numeric_limits<uint64_t>::max()) {
-    if (used <= image.size) { // status update may be laggy, update it now
+
+  if (used != kInvalidSize) {
+    if (used < image.size) { // update used to the latest
       image.used = used;
     }
   }
+
   image.snapshot_ids.insert(snap_id);
   bufferlist image_bl;
   ::encode(image, image_bl);
@@ -6049,23 +6070,26 @@ int status_add_snapshot(cls_method_context_t hctx, bufferlist *in, bufferlist *o
   snapshot.name = snap_name;
   snapshot.image_id = image_id;
   snapshot.id = snap_id;
-  snapshot.size = size;
-  if (used != std::numeric_limits<uint64_t>::max()) {
+  snapshot.size = image.size;   // use size from image
+
+  if (used != kInvalidSize) {
     snapshot.used = used;
   } else {
     snapshot.used = image.used; // fallback to image.used
   }
-  if (snapshot.size < snapshot.used) {
+  if (snapshot.used > snapshot.size) {
     snapshot.used = snapshot.size;
   }
-  if (dirty != std::numeric_limits<uint64_t>::max()) {
+
+  if (dirty != kInvalidSize) {
     snapshot.dirty = dirty;
   } else {
-    snapshot.dirty = 0; // status update maybe laggy
+    snapshot.dirty = 0;
   }
-  if (snapshot.size < snapshot.dirty) {
+  if (snapshot.dirty > snapshot.size) {
     snapshot.dirty = snapshot.size;
   }
+
   bufferlist snapshot_bl;
   ::encode(snapshot, snapshot_bl);
 

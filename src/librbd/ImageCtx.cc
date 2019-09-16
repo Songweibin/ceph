@@ -567,8 +567,7 @@ struct C_InvalidateCache : public Context {
     if (!is_paused_by_qos()) {
       // so we will not be stuck in librados
 
-      uint64_t invalid_used = std::numeric_limits<uint64_t>::max();
-      uint64_t used = invalid_used;
+      uint64_t used = kInvalidSize;
       BitVector<2> om;
       int r = -1;
       {
@@ -621,7 +620,7 @@ struct C_InvalidateCache : public Context {
         }
       }
 
-      if (!to_update && used != invalid_used) {
+      if (!to_update && used != kInvalidSize) {
         uint64_t last_used = m_status_update_last_used;
         double skip_delta_ratio = status_update_skip_delta_ratio;
 
@@ -644,7 +643,7 @@ struct C_InvalidateCache : public Context {
 
       if (to_update) {
         string str = "";
-        if (used != invalid_used) {
+        if (used != kInvalidSize) {
           ostringstream ss;
           ss << " (" << used << ")";
           str = ss.str();

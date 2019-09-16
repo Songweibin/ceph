@@ -3651,7 +3651,7 @@ cdef class StatusUsagetIterator(object):
             for i in range(self.size):
                 yield {
                     'Id'            : self.usages[i].id,
-                    'Status'        : self.usages[i].state,
+                    'DataPool'      : <int64_t>(self.usages[i].state), # used as data pool id
                     'Capacity'      : self.usages[i].size,
                     'UsedCapacity'  : self.usages[i].used,
                     }
