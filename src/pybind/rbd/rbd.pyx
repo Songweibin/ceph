@@ -421,9 +421,9 @@ cdef extern from "rbd/librbd.h" nogil:
     int rbd_cache_disable(rbd_image_t image)
     int rbd_cache_remove(rbd_image_t image)
     int rbd_qos_set(rbd_image_t image,
-                    int reservation, int weight, int limit, int bandwidth)
+                    int64_t reservation, int64_t weight, int64_t limit, int64_t bandwidth)
     int rbd_qos_get(rbd_image_t image,
-                    int *reservation, int *weight, int *limit, int *bandwidth,
+                    int64_t *reservation, int64_t *weight, int64_t *limit, int64_t *bandwidth,
                     int *metaflag)
     int rbd_qos_del(rbd_image_t image, int flag)
 
@@ -2630,10 +2630,10 @@ written." % (self.name, ret, length))
         Set QoS values for the image.
         """
         cdef:
-            int rsv = reservation
-            int wgt = weight
-            int lmt = limit
-            int bdw = bandwidth
+            int64_t rsv = reservation
+            int64_t wgt = weight
+            int64_t lmt = limit
+            int64_t bdw = bandwidth
         with nogil:
             ret = rbd_qos_set(self.image, rsv, wgt, lmt, bdw)
         if ret < 0:
@@ -2645,10 +2645,10 @@ written." % (self.name, ret, length))
         Get QoS values of the image.
         """
         cdef:
-            int rsv = -1
-            int wgt = -1
-            int lmt = -1
-            int bdw = -1
+            int64_t rsv = -1
+            int64_t wgt = -1
+            int64_t lmt = -1
+            int64_t bdw = -1
             int mflag = -1
         with nogil:
             ret = rbd_qos_get(self.image, &rsv, &wgt, &lmt, &bdw, &mflag)
@@ -2677,7 +2677,7 @@ written." % (self.name, ret, length))
         Set QoS weight value for the image.
         """
         cdef:
-            int wgt = weight
+            int64_t wgt = weight
         with nogil:
             ret = rbd_qos_set(self.image, -1, wgt, -1, -1)
         if ret < 0:
@@ -2698,7 +2698,7 @@ written." % (self.name, ret, length))
         Set QoS limit value for the image.
         """
         cdef:
-            int lmt = limit
+            int64_t lmt = limit
         with nogil:
             ret = rbd_qos_set(self.image, -1, -1, lmt, -1)
         if ret < 0:
@@ -2719,7 +2719,7 @@ written." % (self.name, ret, length))
         Set QoS bandw values for the image.
         """
         cdef:
-            int bandw = bandwith
+            int64_t bandw = bandwith
         with nogil:
             ret = rbd_qos_set(self.image, -1, -1, -1, bandw)
         if ret < 0:
