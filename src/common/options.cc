@@ -1979,7 +1979,7 @@ std::vector<Option> get_global_options() {
     .set_description(""),
 
     Option("osd_max_markdown_count", Option::TYPE_INT, Option::LEVEL_ADVANCED)
-    .set_default(5)
+    .set_default(1000000)
     .set_description(""),
 
     Option("osd_peering_wq_threads", Option::TYPE_INT, Option::LEVEL_ADVANCED)
