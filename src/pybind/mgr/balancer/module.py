@@ -1092,7 +1092,7 @@ class Module(MgrModule):
             self.send_command(result, 'mon', '', json.dumps({
                 'prefix': 'osd rm-pg-upmap',
                 'format': 'json',
-                'pgid': pgid,
+                'who': pgid,
             }), 'foo')
             commands.append(result)
 
@@ -1117,7 +1117,7 @@ class Module(MgrModule):
             self.send_command(result, 'mon', '', json.dumps({
                 'prefix': 'osd rm-pg-upmap-items',
                 'format': 'json',
-                'pgid': pgid,
+                'who': pgid,
             }), 'foo')
             commands.append(result)
 
