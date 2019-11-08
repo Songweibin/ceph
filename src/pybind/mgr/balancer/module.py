@@ -753,7 +753,7 @@ class Module(MgrModule):
         self.log.info('do_upmap')
         max_optimizations = int(self.get_config('upmap_max_optimizations', 10))
         max_optimizations = max_optimizations * opt_multiplier;
-        max_deviation = float(self.get_config('upmap_max_deviation', .01))
+        max_deviation = float(self.get_config('upmap_max_deviation', .005))
 
         ms = plan.initial
         if len(plan.pools):
