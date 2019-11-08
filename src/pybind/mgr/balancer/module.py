@@ -268,6 +268,16 @@ class Module(MgrModule):
             "desc": "Execute an optimization plan",
             "perm": "rw",
         },
+        {
+            "cmd": "balancer config-set name=key,type=CephChoices,strings=sleep_interval|begin_time|end_time|begin_weekday|end_weekday|max_misplaced|upmap_max_optimizations|upmap_max_deviation name=value,type=CephString",
+            "desc": "Reset a specific configuration option",
+            "perm": "rw",
+        },
+        {
+            "cmd": "balancer config-get name=key,type=CephChoices,strings=sleep_interval|begin_time|end_time|begin_weekday|end_weekday|max_misplaced|upmap_max_optimizations|upmap_max_deviation",
+            "desc": "Show specific configuration option value",
+            "perm": "r",
+        },
     ]
     active = False
     run = True
@@ -368,6 +378,19 @@ class Module(MgrModule):
             r, detail = self.execute(plan)
             self.plan_rm(command['plan'])
             return (r, '', detail)
+        elif command['prefix'] == 'balancer config-set':
+            key = command['key']
+            value = command['value']
+            if not value:
+                return -errno.EINVAL, '', 'Value should not be empty or None'
+
+            self.log.debug('Setting configuration option %s to %s', key, value)
+            self.set_config(key, value)
+            return 0, 'Configuration option {0} updated'.format(key), ''
+        elif command['prefix'] == 'balancer config-get':
+            key = command['key']
+            value = str(self.get_config(key, ''))
+            return 0, value, ''
         else:
             return (-errno.EINVAL, '',
                     "Command not found '{0}'".format(command['prefix']))
