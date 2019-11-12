@@ -1654,12 +1654,12 @@ void OSDMap::maybe_remove_pg_upmaps(CephContext *cct,
       up.push_back(osd);
     }
     auto crush_rule = tmpmap.get_pg_pool_crush_rule(pg);
-    auto r = tmpmap.crush->verify_upmap(cct,
-                                        crush_rule,
-                                        tmpmap.get_pg_pool_size(pg),
-                                        up);
+    auto r = tmpmap.crush->verify_up(cct,
+                                     crush_rule,
+                                     tmpmap.get_pg_pool_size(pg),
+                                     up);
     if (r < 0) {
-      ldout(cct, 0) << __func__ << " verify_upmap of pg " << pg
+      ldout(cct, 0) << __func__ << " verify_up of pg " << pg
                     << " returning " << r
                     << dendl;
       to_cancel.insert(pg);
