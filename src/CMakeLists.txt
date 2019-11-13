@@ -734,7 +734,7 @@ endif (WITH_MGR)
 set(librados_config_srcs
   librados-config.cc)
 add_executable(librados-config ${librados_config_srcs})
-target_link_libraries(librados-config librados global ${BLKID_LIBRARIES} ${RDMA_LIBRARIES}
+target_link_libraries(librados-config librados global ${BLKID_LIBRARIES}
   ${CMAKE_DL_LIBS})
 
 install(TARGETS librados-config DESTINATION bin)
@@ -892,7 +892,7 @@ set(ceph_osd_srcs
 add_executable(ceph-osd ${ceph_osd_srcs})
 add_dependencies(ceph-osd erasure_code_plugins)
 target_link_libraries(ceph-osd osd os global-static common
-  ${BLKID_LIBRARIES} ${RDMA_LIBRARIES})
+  ${BLKID_LIBRARIES})
 if(WITH_FUSE)
   target_link_libraries(ceph-osd ${FUSE_LIBRARIES})
 endif()
