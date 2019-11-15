@@ -257,6 +257,8 @@ Context *SnapshotCreateRequest<I>::handle_status_add_snapshot(int *result) {
     return nullptr;
   }
 
+  // if image_ctx.object_map == nullptr, we should not complete with *result != 0
+  *result = 0;
   return send_create_object_map();
 }
 
