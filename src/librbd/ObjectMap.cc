@@ -365,7 +365,7 @@ int ObjectMap<I>::get_object_map(BitVector<2>* om) {
   CephContext* cct = m_image_ctx.cct;
   ldout(cct, 10) << dendl;
 
-  if ((m_image_ctx.features & RBD_FEATURE_FAST_DIFF) == 0) {
+  if ((m_image_ctx.features & RBD_FEATURE_OBJECT_MAP) == 0) {
     return -ENOENT;
   }
 
@@ -375,8 +375,8 @@ int ObjectMap<I>::get_object_map(BitVector<2>* om) {
     lderr(cct) << "failed to retrieve image flags" << dendl;
     return r;
   }
-  if ((flags & RBD_FLAG_FAST_DIFF_INVALID) != 0) {
-    ldout(cct, 1) << "cannot perform fast diff on invalid "
+  if ((flags & RBD_FLAG_OBJECT_MAP_INVALID) != 0) {
+    ldout(cct, 1) << "cannot perform du calc on invalid "
                   << "object map" << dendl;
     return -EINVAL;
   }
