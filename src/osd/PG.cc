@@ -6084,6 +6084,18 @@ bool PG::should_restart_peering(
     dout(10) << __func__ << " osd transitioned from down -> up" << dendl;
     return true;
   }
+  if (osdmap->get_pg_size(info.pgid.pgid) >
+      actingset.size() + async_recovery_targets.size()) {
+    auto probe = past_intervals.get_all_probe(pool.info.ec_pool());
+    dout(10) << __func__ << " all probe " << probe << dendl;
+    for (auto& p : probe) {
+      if (!lastmap->is_up(p.osd) && osdmap->is_up(p.osd)) {
+        dout(10) << __func__ << " prior down osd." << p.osd
+                 << " transitioned from down -> up" << dendl;
+        return true;
+      }
+    }
+  }
   return false;
 }
 
