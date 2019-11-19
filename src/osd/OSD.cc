@@ -9354,10 +9354,14 @@ void OSD::handle_pg_trim(OpRequestRef op)
   if (pg->is_primary()) {
     // peer is informing us of their last_complete_ondisk
     dout(10) << *pg << " replica osd." << from << " lcod " << m->trim_to << dendl;
-    pg->peer_last_complete_ondisk[pg_shard_t(from, m->pgid.shard)] =
-      m->trim_to;
-    // trim log when the pg is recovered
-    pg->calc_min_last_complete_ondisk();
+    if (pg->is_peered()) {
+      pg->peer_last_complete_ondisk[pg_shard_t(from, m->pgid.shard)] =
+        m->trim_to;
+      // trim log when the pg is recovered
+      pg->calc_min_last_complete_ondisk();
+    } else {
+      dout(10) << *pg << " raced with peering, discarding" << dendl;
+    }
   } else {
     // primary is instructing us to trim
     ObjectStore::Transaction t;
