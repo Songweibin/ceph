@@ -33,6 +33,4 @@ unsigned ceph_release(void);
 // Release type ("dev", "rc", or "stable")
 const char *ceph_release_type(void);
 
-std::string executable_version();
-
 #endif

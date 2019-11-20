@@ -6812,14 +6812,13 @@ void OSD::do_command(Connection *con, ceph_tid_t tid, vector<string>& cmd, buffe
   f.reset(Formatter::create(format));
 
   if (prefix == "version") {
-    std::string v = executable_version();
     if (f) {
       f->open_object_section("version");
-      f->dump_string("version", v);
+      f->dump_string("version", pretty_version_to_str());
       f->close_section();
       f->flush(ds);
     } else {
-      ds << v;
+      ds << pretty_version_to_str();
     }
     goto out;
   }
