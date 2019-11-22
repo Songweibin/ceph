@@ -2637,7 +2637,7 @@ std::vector<Option> get_global_options() {
     .set_description(""),
 
     Option("osd_load_balancer_spec_high", Option::TYPE_STR, Option::LEVEL_ADVANCED)
-    .set_default("0,100,0,80M")
+    .set_default("0,100,0,160M")
     .set_description(""),
 
     Option("osd_load_balancer_spec_unlimited", Option::TYPE_STR, Option::LEVEL_ADVANCED)
@@ -2645,15 +2645,15 @@ std::vector<Option> get_global_options() {
     .set_description(""),
 
     Option("osd_load_balancer_spec_base_client", Option::TYPE_STR, Option::LEVEL_ADVANCED)
-    .set_default("0,100,0,15M")
+    .set_default("0,100,0,8M")
     .set_description(""),
 
     Option("osd_load_balancer_spec_base_default", Option::TYPE_STR, Option::LEVEL_ADVANCED)
-    .set_default("0,100,0,25M")
+    .set_default("0,100,0,24M")
     .set_description(""),
 
     Option("osd_load_balancer_spec_base_recovery", Option::TYPE_STR, Option::LEVEL_ADVANCED)
-    .set_default("0,100,0,35M")
+    .set_default("0,100,0,40M")
     .set_description(""),
 
     Option("osd_max_push_objects", Option::TYPE_UINT, Option::LEVEL_ADVANCED)
@@ -4683,7 +4683,7 @@ std::vector<Option> get_global_options() {
     .set_description("for single osd, enable adjustment unless there are at least these many objects to recover"),
 
     Option("mgr_recovery_balancer_min_backfills_factor", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
-    .set_default(1)
+    .set_default(2)
     .set_description("osd_max_backfills factor for recovery"),
 
     Option("mgr_recovery_balancer_max_backfills_factor", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
@@ -4703,7 +4703,7 @@ std::vector<Option> get_global_options() {
     .set_description("switch to a more aggressive (e.g., use bigger adjustment factor) adjustment mode when enabled"),
 
     Option("mgr_recovery_balancer_min_aggressive_osds", Option::TYPE_INT, Option::LEVEL_ADVANCED)
-    .set_default(2)
+    .set_default(3)
     .set_description("minimal OSDs to unconditionally enable aggressive mode"),
 
     Option("mgr_recovery_balancer_max_aggressive_adjustment_factor", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
