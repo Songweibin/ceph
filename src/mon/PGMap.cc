@@ -414,7 +414,8 @@ void PGMapDigest::recovery_rate_summary(Formatter *f, ostream *out,
   pos_delta.floor(0);
   bool recovery = false;
   for (auto &p : num_pg_by_state) {
-    if (p.first & (PG_STATE_RECOVERING | PG_STATE_BACKFILLING)) {
+    if (p.first & (PG_STATE_RECOVERING | PG_STATE_BACKFILLING |
+                   PG_STATE_RECOVERY_WAIT | PG_STATE_BACKFILL_WAIT)) {
       recovery = true;
       break;
     }
