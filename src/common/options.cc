@@ -6040,7 +6040,7 @@ static std::vector<Option> get_rbd_options() {
     }),
 
     Option("rbd_default_features", Option::TYPE_STR, Option::LEVEL_ADVANCED)
-    .set_default("layering,exclusive-lock,object-map,fast-diff,deep-flatten")
+    .set_default("layering,exclusive-lock,object-map,deep-flatten")
     .set_description("default v2 image features for new images")
     .set_long_description(
         "RBD features are only applicable for v2 images. This setting accepts "
