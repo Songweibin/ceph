@@ -92,6 +92,8 @@ void cvt_image_info(librbd::xImageInfo& in, librbdx::image_info_t* out) {
   for (auto& w : in.watchers) {
     out->watchers.emplace_back(std::move(w.addr));
   }
+  out->qos.iops = -1;
+  out->qos.bps = -1;
   for (auto& kv : in.kvs) {
     if (kv.first == conf_qos_iops_str) {
       out->qos.iops = std::atoll(kv.second.c_str());
@@ -133,6 +135,8 @@ void cvt_image_info_v2(librbd::xImageInfo_v2& in, librbdx::image_info_v2_t* out)
   for (auto& w : in.watchers) {
     out->watchers.emplace_back(std::move(w.addr));
   }
+  out->qos.iops = -1;
+  out->qos.bps = -1;
   for (auto& kv : in.kvs) {
     if (kv.first == conf_qos_iops_str) {
       out->qos.iops = std::atoll(kv.second.c_str());
@@ -175,6 +179,8 @@ void cvt_image_info_v3(librbd::xImageInfo_v3& in, librbdx::image_info_v3_t* out)
   for (auto& w : in.watchers) {
     out->watchers.emplace_back(std::move(w.addr));
   }
+  out->qos.iops = -1;
+  out->qos.bps = -1;
   for (auto& kv : in.kvs) {
     if (kv.first == conf_qos_iops_str) {
       out->qos.iops = std::atoll(kv.second.c_str());
