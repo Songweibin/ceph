@@ -234,6 +234,7 @@ json json_fmt(const du_info_t& o) {
   json j = json::object({});
   j["size"] = json_fmt(o.size);
   j["du"] = json_fmt(o.du);
+  j["dirty"] = json_fmt(o.dirty);
   return std::move(j);
 }
 
@@ -297,6 +298,7 @@ json json_fmt(const snap_info_v2_t& o) {
   j["protection_status"] = json_fmt(o.protection_status);
   j["timestamp"] = json_fmt(o.timestamp);
   j["du"] = json_fmt(o.du);
+  j["dirty"] = json_fmt(o.dirty);
   return std::move(j);
 }
 
@@ -583,6 +585,7 @@ PYBIND11_MODULE(rbdx, m) {
     cls.def_readonly("protection_status", &snap_info_v2_t::protection_status);
     cls.def_readonly("timestamp", &snap_info_v2_t::timestamp);
     cls.def_readonly("du", &snap_info_v2_t::du);
+    cls.def_readonly("dirty", &snap_info_v2_t::dirty);
     cls.def("__repr__", [](const snap_info_v2_t& self) {
       return json_fmt(self).dump(json_indent);
     });
@@ -677,6 +680,7 @@ PYBIND11_MODULE(rbdx, m) {
     cls.def(py::init<>());
     cls.def_readonly("size", &du_info_t::size);
     cls.def_readonly("du", &du_info_t::du);
+    cls.def_readonly("dirty", &du_info_t::dirty);
     cls.def("__repr__", [](const du_info_t& self) {
       return json_fmt(self).dump(json_indent);
     });
