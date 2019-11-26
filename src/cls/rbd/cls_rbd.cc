@@ -6514,7 +6514,6 @@ int x_image_get(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   uint64_t stripe_count = 0;
   r = x_get_val(vals, "stripe_unit", &stripe_unit);
   if (r == -ENOENT) {
-    stripe_unit = 1ull << order;
     r = 0;
   }
   if (r < 0) {
@@ -6522,8 +6521,6 @@ int x_image_get(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
   }
   r = x_get_val(vals, "stripe_count", &stripe_count);
   if (r == -ENOENT) {
-    // default to 1
-    stripe_count = 1;
     r = 0;
   }
   if (r < 0) {
