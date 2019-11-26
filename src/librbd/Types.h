@@ -133,6 +133,8 @@ struct xSizeInfo {
 struct xDuInfo {
   uint64_t size;
   uint64_t du;
+  // if fast-diff is disabled then `dirty` equals `du`
+  uint64_t dirty;       // only available for snap
 };
 
 // do not default initialize the fields
@@ -159,6 +161,7 @@ struct xSnapInfo_v2 {
   uint8_t protection_status;
   utime_t timestamp;
   uint64_t du;
+  uint64_t dirty;       // if fast-diff is disabled then `dirty` equals `du`
 };
 
 struct xImageInfo {

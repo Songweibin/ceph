@@ -80,7 +80,9 @@ typedef struct {
 
 typedef struct {
   uint64_t size;
-  uint64_t du;
+  // if fast-diff is disabled then `dirty` equals `du`
+  uint64_t du;          // OBJECT_EXISTS + OBJECT_EXISTS_CLEAN
+  uint64_t dirty;       // OBJECT_EXISTS
 } du_info_t;
 
 typedef struct {
@@ -145,7 +147,9 @@ typedef struct {
   uint64_t flags;
   snap_protection_status_t protection_status;
   timespec timestamp;
-  uint64_t du;
+  // if fast-diff is disabled then `dirty` equals `du`
+  uint64_t du;          // OBJECT_EXISTS + OBJECT_EXISTS_CLEAN
+  uint64_t dirty;       // OBJECT_EXISTS
 } snap_info_v2_t;
 
 typedef struct {

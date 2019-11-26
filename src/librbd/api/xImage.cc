@@ -33,6 +33,7 @@ void cvt_size_info(librbd::xSizeInfo& in, librbdx::size_info_t* out) {
 void cvt_du_info(librbd::xDuInfo& in, librbdx::du_info_t* out) {
   out->size = in.size;
   out->du = in.du;
+  out->dirty = in.dirty;
 }
 
 void cvt_snap_info(librbd::xSnapInfo& in, librbdx::snap_info_t* out) {
@@ -56,6 +57,7 @@ void cvt_snap_info_v2(librbd::xSnapInfo_v2& in, librbdx::snap_info_v2_t* out) {
   out->protection_status = static_cast<librbdx::snap_protection_status_t>(in.protection_status);
   in.timestamp.to_timespec(&out->timestamp);
   out->du = in.du;
+  out->dirty = in.dirty;
 }
 
 void cvt_image_info(librbd::xImageInfo& in, librbdx::image_info_t* out) {
@@ -190,36 +192,29 @@ namespace {
 const std::string RBD_QOS_PREFIX = "conf_rbd_";
 const uint64_t MAX_METADATA_ITEMS = 128;
 
-uint64_t calc_du(uint64_t snap_id, BitVector<2>& object_map,
+std::pair<uint64_t, uint64_t> calc_du(BitVector<2>& object_map,
     uint64_t size, uint8_t order) {
   uint64_t used = 0;
+  uint64_t dirty = 0;
+
   uint64_t left = size;
   uint64_t object_size = (1ull << order);
 
   auto it = object_map.begin();
   auto end_it = object_map.end();
-  if (snap_id == CEPH_NOSNAP) {
-    while (it != end_it) {
-      uint64_t len = min(object_size, left);
-      if (*it == OBJECT_EXISTS || *it == OBJECT_EXISTS_CLEAN) {
-        used += len;
-      }
-
-      ++it;
-      left -= len;
+  while (it != end_it) {
+    uint64_t len = min(object_size, left);
+    if (*it == OBJECT_EXISTS) { // if fast-diff is disabled then `used` equals `dirty`
+      used += len;
+      dirty += len;
+    } else if (*it == OBJECT_EXISTS_CLEAN) {
+      used += len;
     }
-  } else {
-    while (it != end_it) {
-      uint64_t len = min(object_size, left);
-      if (*it == OBJECT_EXISTS) {
-        used += len;
-      }
 
-      ++it;
-      left -= len;
-    }
+    ++it;
+    left -= len;
   }
-  return used;
+  return std::make_pair(used, dirty);
 }
 
 #undef dout_prefix
@@ -227,6 +222,9 @@ uint64_t calc_du(uint64_t snap_id, BitVector<2>& object_map,
                            << __func__ << " " << this << ": " \
                            << "(id=" << m_image_id << "): "
 
+/*
+ * get image name from image id
+ */
 template <typename I>
 class NameRequest {
 public:
@@ -352,7 +350,9 @@ private:
 #define dout_prefix *_dout << "librbd::api::xImage::IdRequest: " \
                            << __func__ << " " << this << ": " \
                            << "(id=" << m_image_name << "): "
-
+/*
+ * get image id from image name
+ */
 template <typename I>
 class IdRequest {
 public:
@@ -435,6 +435,9 @@ private:
                            << __func__ << " " << this << ": " \
                            << "(id=" << m_image_id << "): "
 
+/*
+ * get head image/snap's size and other basic info
+ */
 template <typename I>
 class SizeRequest {
 public:
@@ -536,6 +539,9 @@ private:
                            << __func__ << " " << this << ": " \
                            << "(id=" << m_image_id << "): "
 
+/*
+ * get head image/snap's du info
+ */
 template <typename I>
 class DuRequest {
 public:
@@ -553,6 +559,7 @@ public:
 
     m_info->size = 0;
     m_info->du = 0;
+    m_info->dirty = 0;
   }
 
   void send() {
@@ -627,6 +634,7 @@ private:
       // todo: fallback to iterate image objects
       m_x_info.size = m_size_info.size;
       m_x_info.du = 0;
+      m_x_info.dirty = 0;
 
       finish(0);
     }
@@ -673,8 +681,11 @@ private:
       return;
     }
 
+    auto du = calc_du(object_map, m_size_info.size, m_size_info.order);
+
     m_x_info.size = m_size_info.size;
-    m_x_info.du = calc_du(m_snap_id, object_map, m_size_info.size, m_size_info.order);
+    m_x_info.du = du.first;
+    m_x_info.dirty = du.second;
 
     finish(0);
   }
@@ -700,6 +711,9 @@ private:
                            << __func__ << " " << this << ": " \
                            << "(id=" << m_image_id << "): "
 
+/*
+ * get image's whole du info, whose snap's du info also included
+ */
 template <typename I>
 class DuRequest_v2 {
 public:
@@ -786,7 +800,7 @@ private:
 
     if (!snapc->is_valid()) {
       lderr(m_cct) << "snap context is invalid" << dendl;
-      finish(-EINVAL);
+      finish(-ESTALE);
       return;
     }
 
@@ -835,18 +849,25 @@ private:
                            << __func__ << " " << this << ": " \
                            << "(id=" << m_size_info.image_id << "): "
 
+/*
+ * get `du` and `dirty` for a given head image/snap with explicitly
+ * provided size info
+ */
 template <typename I>
 class DuRequest_v3 {
 public:
   DuRequest_v3(librados::IoCtx& ioctx, Context* on_finish,
       librbd::xSizeInfo& size_info,
-      uint64_t* du)
+      uint64_t* du, uint64_t* dirty)
     : m_cct(reinterpret_cast<CephContext*>(ioctx.cct())),
       m_io_ctx(ioctx), m_on_finish(on_finish),
       m_size_info(size_info),
-      m_du(du) {
+      m_du(du), m_dirty(dirty) {
     std::swap(m_size_info, size_info);
     *m_du = 0;
+    if (m_dirty != nullptr) {
+      *m_dirty = 0;
+    }
   }
 
   void send() {
@@ -866,6 +887,9 @@ private:
     } else {
       // todo: fallback to iterate image objects
       *m_du = 0;
+      if (m_dirty != nullptr) {
+        *m_dirty = 0;
+      }
 
       finish(0);
     }
@@ -913,8 +937,12 @@ private:
       return;
     }
 
-    *m_du = calc_du(m_size_info.snap_id, object_map,
-        m_size_info.size, m_size_info.order);
+    auto du = calc_du(object_map, m_size_info.size, m_size_info.order);
+
+    *m_du = du.first;
+    if (m_dirty != nullptr) {
+      *m_dirty = du.second;
+    }
 
     finish(0);
   }
@@ -930,6 +958,7 @@ private:
 
   // [out]
   uint64_t* m_du;
+  uint64_t* m_dirty;
 };
 
 #undef dout_prefix
@@ -1198,7 +1227,7 @@ private:
       .flags = m_x_info.flags,
     };
     auto request = new DuRequest_v3<I>(m_io_ctx, on_finish,
-        size_info, &du);
+        size_info, &du, nullptr);
     request->send();
   }
 
@@ -1368,7 +1397,7 @@ private:
 
     if (!snapc->is_valid()) {
       lderr(m_cct) << "snap context is invalid" << dendl;
-      finish(-EINVAL);
+      finish(-ESTALE);
       return;
     }
 
@@ -1389,8 +1418,10 @@ private:
       Context *on_finish = librbd::util::create_context_callback<klass,
           &klass::complete_request>(this);
       auto du = &m_x_info.du;
+      uint64_t* dirty = nullptr;
       if (snap != CEPH_NOSNAP) {
         du = &m_x_info.snaps[snap].du;
+        dirty = &m_x_info.snaps[snap].dirty;
       }
       librbd::xSizeInfo size_info = {
         .image_id = m_image_id,
@@ -1403,7 +1434,7 @@ private:
         .flags = m_x_info.flags,
       };
       auto request = new DuRequest_v3<I>(m_io_ctx, on_finish,
-          size_info, du);
+          size_info, du, dirty);
       request->send();
     }
   }
@@ -1804,12 +1835,16 @@ int xImage<I>::get_du_sync(librados::IoCtx& ioctx,
       return r;
     }
 
+    auto du = calc_du(object_map, size_info.size, size_info.order);
+
     info->size = size_info.size;
-    info->du = calc_du(snap_id, object_map, size_info.size, size_info.order);
+    info->du = du.first;
+    info->dirty = du.second;
   } else {
     // todo: fallback to iterate image objects
     info->size = size_info.size;
     info->du = 0;
+    info->dirty = 0;
   }
 
   latency = ceph_clock_now() - latency;
