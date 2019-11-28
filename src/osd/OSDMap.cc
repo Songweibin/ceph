@@ -3926,6 +3926,12 @@ int OSDMap::clean_pg_upmaps(
 		     << p.second << dendl;
       pending_inc->old_pg_upmap.insert(p.first);
       ++changed;
+    } else if ((size_t)get_pg_pool_size(p.first) != p.second.size()) {
+        ldout(cct, 10) << " removing size-mismatched pg_upmap "
+                       << p.first << " " << p.second
+                       << dendl;
+      pending_inc->old_pg_upmap.insert(p.first);
+      ++changed;
     }
   }
   for (auto& p : pg_upmap_items) {
