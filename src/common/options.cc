@@ -1537,7 +1537,7 @@ std::vector<Option> get_global_options() {
     .set_description(""),
 
     Option("mon_client_hunt_interval", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
-    .set_default(0.5)
+    .set_default(3.0)
     .set_description(""),
 
     Option("mon_client_ping_interval", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
@@ -1545,7 +1545,7 @@ std::vector<Option> get_global_options() {
     .set_description(""),
 
     Option("mon_client_ping_timeout", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
-    .set_default(5.0)
+    .set_default(2.0)
     .set_description(""),
 
     Option("mon_client_hunt_interval_backoff", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
