@@ -1557,7 +1557,7 @@ std::vector<Option> get_global_options() {
     .set_description(""),
 
     Option("mon_client_hunt_interval_max_multiple", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
-    .set_default(10.0)
+    .set_default(3.0)
     .set_description(""),
 
     Option("mon_client_max_log_entries_per_message", Option::TYPE_INT, Option::LEVEL_ADVANCED)
