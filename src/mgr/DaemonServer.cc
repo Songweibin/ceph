@@ -2119,7 +2119,9 @@ void DaemonServer::maybe_reset_recovery_limits()
     for (auto &ps: pg_map.pg_stat) {
       auto stat = ps.second;
       if (stat.state & (PG_STATE_RECOVERING | PG_STATE_RECOVERY_WAIT)) {
-        if (stat.up.size() > stat.acting.size()) {
+        set<int32_t> up_set(stat.up.begin(), stat.up.end());
+        set<int32_t> acting_set(stat.acting.begin(), stat.acting.end());
+        if (up_set != acting_set) {
           // it's likely be async recovery
           auto num_objects_to_recover = std::max((int64_t)0, std::min(stat.stats.sum.num_objects,
             stat.stats.sum.num_objects_degraded + stat.stats.sum.num_objects_misplaced));
