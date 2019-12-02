@@ -460,6 +460,7 @@ class Module(MgrModule):
     def auto_balance_empty_pools(self):
         osdmap = self.get_osdmap()
         pool_stats = self.get('pg_dump').get('pool_stats', [])
+        num_pg = 0
 
         # check empty pools
         # note that we add enough headroom here to catch any virtually/nearly
@@ -473,10 +474,11 @@ class Module(MgrModule):
                 # FIXME: make plan accept ids directly instead
                 pool_name = self.get_pool_name(osdmap, pool_stat['poolid'])
                 if pool_name:
+                    num_pg += pool_stat['num_pg']
                     empty_pools.append(pool_name)
 
         if len(empty_pools) == 0:
-             return
+             return num_pg
 
         # bit hacky, might include uuid to ensure uniqueness someday..
         plan_name = 'for_empty_pools'
@@ -490,14 +492,18 @@ class Module(MgrModule):
             # may or may not work, we don't really care
             self.enable_required_upmap_features()
         self.optimizing = False
+        return num_pg
 
     def serve(self):
         self.log.info('Starting')
         while self.run:
-            self.auto_balance_empty_pools()
+            num_pg = self.auto_balance_empty_pools()
             self.active = self.get_config('active', '') is not ''
             sleep_interval = float(self.get_config('sleep_interval',
                                                    default_sleep_interval))
+            # sleep longer for large clusters
+            if num_pg > 512:
+                sleep_interval = sleep_interval * num_pg / 512
             self.log.debug('Waking up [%s, now %s]',
                            "active" if self.active else "inactive",
                            time.strftime(TIME_FORMAT, time.localtime()))
