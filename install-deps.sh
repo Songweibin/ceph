@@ -152,7 +152,7 @@ else
         ;;
     centos|fedora|rhel|ol|virtuozzo)
         yumdnf="yum"
-        builddepcmd="yum-builddep -y"
+        builddepcmd="yum-builddep -y --setopt=*.skip_if_unavailable=true"
         if test "$(echo "$VERSION_ID >= 22" | bc)" -ne 0; then
             yumdnf="dnf"
             builddepcmd="dnf -y builddep --allowerasing"
@@ -172,13 +172,13 @@ else
                     $SUDO yum install subscription-manager
                     $SUDO subscription-manager repos --enable=rhel-$MAJOR_VERSION-server-optional-rpms
                 fi
-                $SUDO yum-config-manager --add-repo https://dl.fedoraproject.org/pub/epel/$MAJOR_VERSION/x86_64/
-                $SUDO yum install --nogpgcheck -y epel-release
-                $SUDO rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-$MAJOR_VERSION
-                $SUDO rm -f /etc/yum.repos.d/dl.fedoraproject.org*
-                if test $(lsb_release -si) = CentOS -a $MAJOR_VERSION = 7 ; then
-                    $SUDO yum-config-manager --enable cr
-                fi
+                #$SUDO yum-config-manager --add-repo https://dl.fedoraproject.org/pub/epel/$MAJOR_VERSION/x86_64/
+                #$SUDO yum install --nogpgcheck -y epel-release
+                #$SUDO rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-$MAJOR_VERSION
+                #$SUDO rm -f /etc/yum.repos.d/dl.fedoraproject.org*
+                #if test $(lsb_release -si) = CentOS -a $MAJOR_VERSION = 7 ; then
+                #    $SUDO yum-config-manager --enable cr
+                #fi
                 if test $(lsb_release -si) = VirtuozzoLinux -a $MAJOR_VERSION = 7 ; then
                     $SUDO yum-config-manager --enable cr
                 fi
