@@ -226,6 +226,13 @@ void PostAcquireRequest<I>::handle_open_object_map(int r) {
   if (r < 0) {
     lderr(cct) << "failed to open object map: " << cpp_strerror(r) << dendl;
 
+    if (r != -EFBIG) {
+      save_result(r);
+      revert();
+      finish();
+      return;
+    }
+
     r = 0;
     delete m_object_map;
     m_object_map = nullptr;

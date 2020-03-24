@@ -5,6 +5,7 @@
 #include "cls/lock/cls_lock_client.h"
 #include "common/dout.h"
 #include "common/errno.h"
+#include "librbd/exclusive_lock/Policy.h"
 #include "librbd/ImageCtx.h"
 #include "librbd/ObjectMap.h"
 #include "librbd/object_map/InvalidateRequest.h"
@@ -131,6 +132,14 @@ Context *RefreshRequest<I>::handle_load(int *ret_val) {
     return nullptr;
   } else if (*ret_val < 0) {
     lderr(cct) << "failed to load object map: " << oid << dendl;
+    m_image_ctx.owner_lock.get_read();
+    if (*ret_val == -ETIMEDOUT &&
+        !cct->_conf->get_val<bool>("rbd_invalidate_object_map_on_load_timeout")) {
+      m_image_ctx.owner_lock.put_read();
+      return m_on_finish;
+    }
+
+    m_image_ctx.owner_lock.put_read();
     send_invalidate();
     return nullptr;
   }
@@ -181,7 +190,11 @@ Context *RefreshRequest<I>::handle_invalidate(int *ret_val) {
   CephContext *cct = m_image_ctx.cct;
   ldout(cct, 10) << this << " " << __func__ << ": r=" << *ret_val << dendl;
 
-  assert(*ret_val == 0);
+  if (*ret_val < 0) {
+    lderr(cct) << "failed to invalidate object map: " << cpp_strerror(*ret_val)
+               << dendl;
+  }
+
   apply();
   return m_on_finish;
 }
